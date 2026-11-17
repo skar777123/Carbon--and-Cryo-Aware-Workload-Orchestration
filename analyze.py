@@ -23,6 +23,15 @@ def fmt(x, d=1):
 
 
 def boot_ci(v, n=4000):
+    """95% CI of the mean. If v is a Series indexed by (theta, lam, regime, seed) a two-level (cluster) bootstrap is used:
+    scenarios are resampled with replacement, then episodes within each resampled scenario."""
+    if isinstance(v, pd.Series) and isinstance(v.index, pd.MultiIndex) and 'theta' in v.index.names:
+        groups = [g.values for _, g in v.groupby(level=['theta', 'lam', 'regime'])]
+        m = []
+        for _ in range(n):
+            pick = rng.integers(0, len(groups), len(groups))
+            m.append(np.mean(np.concatenate([groups[i][rng.integers(0, len(groups[i]), len(groups[i]))] for i in pick])))
+        return float(np.percentile(m, 2.5)), float(np.percentile(m, 97.5))
     v = np.asarray(v); m = [v[rng.integers(0, len(v), len(v))].mean() for _ in range(n)]
     return float(np.percentile(m, 2.5)), float(np.percentile(m, 97.5))
 
@@ -58,7 +67,7 @@ def paired(pol, ref, metric, mask=None, kind='pct'):
     a, b = w[pol], w[ref]
     r = 100 * (a / b - 1) if kind == 'pct' else (a - b)
     r = r.replace([np.inf, -np.inf], np.nan).dropna()
-    lo, hi = boot_ci(r.values)
+    lo, hi = boot_ci(r)
     try:
         p = st.wilcoxon(a - b).pvalue
     except Exception:
@@ -246,7 +255,7 @@ if os.path.exists('results/ablation.csv'):
         d = A[A.variant == v].set_index(K2)
         j = d.join(full, rsuffix='_f')
         pc = lambda m: (100 * (j[m] / j[m + '_f'] - 1)).replace([np.inf, -np.inf], np.nan).dropna()
-        rows.append((v, pc('score').mean(), boot_ci(pc('score').values), pc('E_dyn').mean(), pc('C_dyn').mean(), 100 * d.slo_miss.mean(), 100 * d.rework.mean(), d.defer.mean() * 100,
+        rows.append((v, pc('score').mean(), boot_ci(pc('score')), pc('E_dyn').mean(), pc('C_dyn').mean(), 100 * d.slo_miss.mean(), 100 * d.rework.mean(), d.defer.mean() * 100,
                      st.wilcoxon(j['score'] - j['score_f']).pvalue if v != 'EcoQ (full)' else np.nan))
     with open(f'{OUT}/tables/tab_ablation.tex', 'w') as f:
         f.write('\\begin{tabular}{@{}lrrrrrr@{}}\\toprule\n')
@@ -286,7 +295,7 @@ if os.path.exists('results/sensitivity.csv'):
         f.write('Setting & \\multicolumn{2}{c}{vs.\\ Classical-only (\\%)} & \\multicolumn{2}{c}{vs.\\ Speed-first (\\%)} & \\multicolumn{2}{c}{Cost vs.\\ CL / SF (\\%)} & Offl. (\\%)\\\\\n')
         f.write('& $\\Delta E$ & $\\Delta C$ & $\\Delta E$ & $\\Delta C$ & CL & SF & \\\\\\midrule\n')
         for r in rows:
-            lab = (r[0].replace('xi=1', r'$\xi{=}1$').replace('rho=0.3', r'$\rho{=}0.3$').replace('eta=1.0', r'$\eta{=}1.0$')
+            lab = (r[0].replace('xi=Aer-calibrated (optimistic)', r'$\xi$ = Aer-calibrated (optimistic)').replace('rho=0.3', r'$\rho{=}0.3$').replace('eta=1.0', r'$\eta{=}1.0$')
                    .replace('sigma_k=0.5', r'$\sigma_\kappa{=}0.5$').replace(' x4', r' $\times4$').replace(' x3', r' $\times3$')
                    .replace('set-up 0 s', 'set-up 0\\,s').replace('set-up 1800 s', 'set-up 1800\\,s'))
             f.write(f'{lab} & {r[1]:+.1f} & {r[2]:+.1f} & {r[3]:+.1f} & {r[4]:+.1f} & {r[5]:+.1f} & {r[6]:+.1f} & {r[8]:.1f}\\\\\n')
@@ -294,7 +303,7 @@ if os.path.exists('results/sensitivity.csv'):
     setnum('SensMinCostVsCL', f'{min(r[5] for r in rows):+.1f}'); setnum('SensMaxCostVsCL', f'{max(r[5] for r in rows):+.1f}')
     setnum('SensMinCostVsSF', f'{min(r[6] for r in rows):+.1f}'); setnum('SensMaxCostVsSF', f'{max(r[6] for r in rows):+.1f}')
     for r in rows:
-        if r[0].startswith('xi=1'):
+        if r[0].startswith('xi=Aer'):
             setnum('SensXiOffload', f'{r[8]:.1f}'); setnum('SensXiCostCL', f'{r[5]:+.1f}'); setnum('SensXiCostSF', f'{r[6]:+.1f}')
         if r[0] == 'nominal':
             setnum('SensNomOffload', f'{r[8]:.1f}'); setnum('SensNomCostCL', f'{r[5]:+.1f}'); setnum('SensNomE', f'{r[1]:+.1f}'); setnum('SensNomC', f'{r[2]:+.1f}')
@@ -393,6 +402,22 @@ for k, v in (('AerPearson', S_['pearson_r_lost']), ('AerMAEUncal', Cal['mae_test
              ('XiEight', Cal['xi_n8']), ('XiTen', Cal['xi_n10']), ('XiTwelve', Cal['xi_n12']), ('AerNPoints', S_['n_points'])):
     setnum(k, f'{v:.3f}' if isinstance(v, float) else v)
 
+
+# ======================================================== extended Aer validation
+X = json.load(open('results/aer_extended.json')); V, Th = X['vqe'], X['thermal']
+for k, v in (('VqeN', V['n_points']), ('VqeXi', V['xi_train']), ('VqeMAEone', V['mae_test_xi1']), ('VqeMAEcal', V['mae_test_cal']),
+             ('VqeCons', 100 * V['frac_xi1_conservative']), ('ThN', Th['n_points']), ('ThMAEesp', Th['mae_esp']), ('ThMAEcal', Th['mae_calibrated']),
+             ('ThBiasCal', Th['bias_calibrated']), ('ThBiasEsp', Th['bias_esp']), ('ThOpt', 100 * Th['frac_cal_optimistic']), ('ThCons', 100 * Th['frac_esp_conservative'])):
+    setnum(k, f'{v:.3f}' if isinstance(v, float) and k not in ('VqeCons', 'ThOpt', 'ThCons') else (f'{v:.0f}' if isinstance(v, float) else v))
+with open(f'{OUT}/tables/tab_aerext.tex', 'w') as f:
+    f.write('\\begin{tabular}{@{}lrrrr@{}}\\toprule\n')
+    f.write('Check (Qiskit Aer, exact density matrix) & Points & Model & MAE & Bias\\\\\\midrule\n')
+    f.write(f"VQE-type, depolarising, $n\\in\\{{4,6,8\\}}$ & {V['n_points']} & ESP ($\\xi{{=}}1$; used) & {V['mae_test_xi1']:.3f} & {V['bias_test_xi1']:+.3f}\\\\\n")
+    f.write(f"\\quad (held-out Hamiltonian) & & fitted $\\xi{{=}}{V['xi_train']:.2f}$ & {V['mae_test_cal']:.3f} & --\\\\\\midrule\n")
+    f.write(f"QAOA, thermal relaxation + depolarising floor, $n\\in\\{{8,10\\}}$ & {Th['n_points']} & ESP ($\\xi{{=}}1$) & {Th['mae_esp']:.3f} & {Th['bias_esp']:+.3f}\\\\\n")
+    f.write(f"\\quad (no refitting) & & calibrated $\\xi(n)$ (used) & {Th['mae_calibrated']:.3f} & {Th['bias_calibrated']:+.3f}\\\\\n")
+    f.write('\\bottomrule\\end{tabular}\n')
+
 # ======================================================== decision latency
 import policies, time as _t
 e = E.Env(); t0 = _t.time(); nd = 0
@@ -403,14 +428,34 @@ for sd in range(3):
 setnum('DecisionMs', f'{1000*(_t.time()-t0)/nd:.2f}')
 
 # ======================================================== carbon trace figure
-fig, ax = plt.subplots(figsize=(3.4, 1.8))
-for rg, col in (('solar', C['orange']), ('wind', C['blue']), ('fossil', C['grey'])):
-    I = E.make_trace(rg, 168, np.random.default_rng(3)); ax.plot(np.arange(168), I, color=col, lw=.9, label=rg)
-ax.set_xlabel('hour of week'); ax.set_ylabel(r'$I(t)$ (gCO$_2$/kWh)'); ax.legend(frameon=False, ncol=3, fontsize=6.5)
+ZN = ['US-CAL-CISO', 'GB', 'DE', 'IN-WE', 'FR']
+ZC = [C['orange'], C['blue'], C['grey'], C['verm'], C['green']]
+R_ = pd.read_csv('data/traces_2025.csv')
+fig, ax = plt.subplots(figsize=(3.4, 1.9))
+for z, col in zip(ZN, ZC):
+    ax.plot(np.arange(168), R_[z].to_numpy()[4500:4500 + 168], color=col, lw=.8, label=z)
+ax.set_xlabel('hour of week (sample week from 2025)'); ax.set_ylabel(r'$I(t)$ (gCO$_2$/kWh)'); ax.legend(frameon=False, ncol=3, fontsize=5.5)
 plt.tight_layout(); plt.savefig(f'{OUT}/figs/fig_traces.pdf'); plt.close()
-for rg in ('solar', 'wind', 'fossil'):
-    I = np.concatenate([E.make_trace(rg, 168, np.random.default_rng(s)) for s in range(20)])
-    setnum(f'Trace{rg}', f'{I.mean():.0f}'); setnum(f'Trace{rg}min', f'{np.percentile(I,5):.0f}'); setnum(f'Trace{rg}max', f'{np.percentile(I,95):.0f}')
+for z in ZN:
+    I = R_[z].to_numpy(); k = ''.join(ch for ch in z if ch.isalpha())
+    setnum(f'Trace{k}', f'{I.mean():.0f}'); setnum(f'Trace{k}min', f'{np.percentile(I,5):.0f}'); setnum(f'Trace{k}max', f'{np.percentile(I,95):.0f}')
+    setnum(f'Trace{k}acf', f'{np.corrcoef(I[:-24], I[24:])[0,1]:.2f}')
+
+
+# ======================================================== IBM hardware (ibm_fez)
+H_ = json.load(open('results/ibm_hardware.json'))
+hm = np.array([x['lost_meas'] for x in H_]); he = np.array([x['lost_esp'] for x in H_]); hc = np.array([x['lost_cal'] for x in H_])
+fig, ax = plt.subplots(1, 2, figsize=(3.4, 1.75), sharey=True)
+for a_, (pred, ttl) in zip(ax, ((he, r'ESP ($\xi=1$)'), (hc, r'Aer-calibrated $\xi$'))):
+    for n_, col in ((6, C['blue']), (8, C['orange']), (10, C['green'])):
+        ii = [i for i, x in enumerate(H_) if x['n'] == n_]; a_.scatter(hm[ii], pred[ii], s=9, color=col, label=f'n={n_}')
+    a_.plot([0, .4], [0, .4], 'k--', lw=.6); a_.set_xlim(0, .4); a_.set_ylim(0, .4); a_.set_title(ttl, fontsize=6); a_.set_xlabel('measured loss (ibm_fez)')
+ax[0].set_ylabel('predicted loss'); ax[0].legend(frameon=False, fontsize=5)
+plt.tight_layout(); plt.savefig(f'{OUT}/figs/fig_hw.pdf'); plt.close()
+for k, v in (('HwN', len(H_)), ('HwMAEesp', np.abs(he - hm).mean()), ('HwBiasEsp', (he - hm).mean()), ('HwMAEcal', np.abs(hc - hm).mean()),
+             ('HwBiasCal', (hc - hm).mean()), ('HwPearsonEsp', np.corrcoef(he, hm)[0, 1]), ('HwPearsonCal', np.corrcoef(hc, hm)[0, 1]),
+             ('HwMeasMean', hm.mean()), ('HwMeasMax', hm.max()), ('HwMaxAbsEsp', np.abs(he - hm).max())):
+    setnum(k, f'{v:.3f}' if k != 'HwN' else str(v))
 
 # ======================================================== write macros
 with open(f'{OUT}/numbers.tex', 'w') as f:

@@ -1,9 +1,9 @@
 """Evaluation harness: main grid, ablations, sensitivity, Pareto.  Usage: python run_experiments.py <mode>"""
 import sys, json, time, itertools, multiprocessing as mp
-sys.path.insert(0, '/home/claude/ecoq')
+sys.path.insert(0, '.')
 import numpy as np, pandas as pd
 
-THETAS = [0.0, 0.2, 0.35, 0.5]; LAMS = [2.0, 4.0, 6.0]; REGS = ['solar', 'wind', 'fossil']
+THETAS = [0.0, 0.2, 0.35, 0.5]; LAMS = [2.0, 4.0, 6.0]; REGS = ['US-CAL-CISO', 'GB', 'DE', 'IN-WE', 'FR']
 W0 = dict(alpha=0.5, beta=0.5, gamma=0.3, lam=2.0, delta=1.0)
 _cache = {}
 
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     elif mode == 'sens':
         S = {
             'nominal': {},
-            'xi=1 (uncalibrated ESP)': dict(xi_mode='esp'),
+            'xi=Aer-calibrated (optimistic)': dict(xi_mode='cal'),
             'telemetry noise x4': dict(sigma_tel=0.20),
             'forecast error x3': dict(f_s0=0.09, f_s1=0.012),
             'perfect forecast': dict(f_s0=0.0, f_s1=0.0),

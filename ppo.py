@@ -5,7 +5,7 @@ from env import Env, N_ACT, DEFAULTS
 torch.set_num_threads(1)
 THETAS = [0.0, 0.2, 0.35, 0.5]
 LAMS = [2.0, 4.0, 6.0]
-REGIMES = ["solar", "wind", "fossil"]
+REGIMES = ["US-CAL-CISO", "GB", "DE", "IN-WE", "FR"]
 
 
 def mlp(i, o, h=128, last_gain=1.0):
@@ -57,7 +57,7 @@ class Agent:
 
 def sample_scenario(rng):
     return dict(theta=float(rng.choice(THETAS)), lam_per_h=float(rng.choice(LAMS)),
-                regime=str(rng.choice(REGIMES)))
+                regime=str(rng.choice(REGIMES)), trace_split="train")
 
 
 def train(seed=0, steps=150_000, ablate=None, w=None, cfg=None, log_every=1, verbose=False, init_agent=None,
@@ -197,9 +197,9 @@ def bc_pretrain(ag, env_cfg, ablate, n_steps=40_000, epochs=30, seed=0, rbase=Tr
     return acc
 
 
-VAL = [dict(theta=th, lam_per_h=lam, regime=rg) for th, lam, rg in
-       [(0.35, 2.0, "solar"), (0.5, 2.0, "wind"), (0.5, 4.0, "fossil"), (0.5, 6.0, "solar"), (0.35, 6.0, "wind"),
-        (0.2, 4.0, "solar"), (0.5, 6.0, "wind"), (0.35, 4.0, "fossil")]]
+VAL = [dict(theta=th, lam_per_h=lam, regime=rg, trace_split="train") for th, lam, rg in
+       [(0.35, 2.0, "US-CAL-CISO"), (0.5, 2.0, "GB"), (0.5, 4.0, "DE"), (0.5, 6.0, "IN-WE"), (0.35, 6.0, "FR"),
+        (0.2, 4.0, "US-CAL-CISO"), (0.5, 6.0, "GB"), (0.35, 4.0, "DE")]]
 
 
 def validate(ag, env_cfg, ablate, base_costs=None):

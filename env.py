@@ -35,7 +35,7 @@ DEFAULTS = dict(
     drift_eta=0.3, sigma_kappa=0.25, sigma_tel=0.05,
     sigma_pred=0.3,           # profiling error on classical runtime (log-normal)
     f_s0=0.03, f_s1=0.004,    # carbon-forecast error: sigma = s0 + s1*lead_h
-    xi_mode="cal",         # 'cal': Aer-calibrated energy-damping exponent for QAOA; 'esp': xi=1 everywhere
+    xi_mode="esp",         # 'cal': Aer-calibrated energy-damping exponent for QAOA; 'esp': xi=1 everywhere
     setup_aware=True,       # whether predictions include session set-up energy
     rho_mit=0.6, mit_shots=3.0, mit_time=2.0, mit_floor=0.15,
     t_pre=10.0, t_iter=0.2,
@@ -60,9 +60,32 @@ def act_decode(a):
 
 
 # --------------------------------------------------------------------------- #
-# Carbon-intensity traces (SYNTHETIC; see paper)
+# Carbon-intensity traces: real 2025 hourly profiles (data/traces_2025.csv) + legacy synthetic regimes
 # --------------------------------------------------------------------------- #
-def make_trace(regime, n_h, rng):
+ZONES = ["US-CAL-CISO", "GB", "DE", "IN-WE", "FR"]
+_REAL = None
+# chronological split: windows starting in [0,TRAIN_END] (hours 0..TRAIN_END+n_h) for training/validation,
+# windows starting in [TEST_START, 8760-n_h] for testing -> no hour is shared between the two sets.
+TRAIN_START_MAX = 3000
+TEST_START_MIN = 4500
+
+
+def real_trace(zone, n_h, rng, split="test"):
+    global _REAL
+    if _REAL is None:
+        import os, pandas as pd
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "traces_2025.csv")
+        _REAL = pd.read_csv(p)
+    x = _REAL[zone].to_numpy(float)
+    hi_max = len(x) - n_h
+    lo, hi = (0, TRAIN_START_MAX) if split == "train" else (TEST_START_MIN, hi_max)
+    st = int(rng.integers(lo, hi + 1))
+    return x[st:st + n_h].copy()
+
+
+def make_trace(regime, n_h, rng, split="test"):
+    if regime in ZONES:
+        return real_trace(regime, n_h, rng, split)
     h = np.arange(n_h)
     hod = h % 24
 
@@ -181,7 +204,7 @@ class Env:
         self.rng = rng
         self.T = cfg["horizon_h"] * H
         self.nH = int(24 * 60)
-        self.I = make_trace(cfg["regime"], self.nH, rng)
+        self.I = make_trace(cfg["regime"], self.nH, rng, cfg.get("trace_split", "test"))
         self.cumT = np.concatenate([[0], np.cumsum(self.I * H)])  # g/kWh * s
         self.eps = rng.normal(0, 1, self.nH)                      # fixed forecast noise
         self.kappa = [np.exp(rng.normal(0, cfg["sigma_kappa"], 400)) for _ in range(K)]

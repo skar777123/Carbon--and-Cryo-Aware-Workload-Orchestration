@@ -1,0 +1,12 @@
+{
+ "static1|CostGreedy": 8555.872448601036,
+ "static2|CostGreedy": 10372.671151208451,
+ "static3|CostGreedy": 14101.878741697581,
+ "lf0.5|CostGreedy": 13909.593037749522,
+ "lf0.7|CostGreedy": 12740.252699089973,
+ "lf0.9|CostGreedy": 11692.673922474822,
+ "lf1.1|CostGreedy": 10675.003709248405,
+ "static1|CarbonDefer0.0": 8758.626909979246,
+ "static1|CarbonDefer0.1": 8584.02758522189,
+ "static1|CarbonDefer0.3": 8551.331782998866
+}

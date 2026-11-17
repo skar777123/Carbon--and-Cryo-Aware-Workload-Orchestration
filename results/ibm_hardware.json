@@ -1,0 +1,92 @@
+[
+ {
+  "n": 6,
+  "graph": 0,
+  "job_id": "dbtv512e8crs738arq70",
+  "backend": "ibm_fez",
+  "F": 0.8817552496433944,
+  "lost_meas": 0.13234400302749227,
+  "lost_esp": 0.11824475035660564,
+  "lost_cal": 0.04212456793649966
+ },
+ {
+  "n": 6,
+  "graph": 1,
+  "job_id": "dbtv5449po4c73ceb7i0",
+  "backend": "ibm_fez",
+  "F": 0.8874908855329947,
+  "lost_meas": 0.12127287757845029,
+  "lost_esp": 0.11250911446700529,
+  "lost_cal": 0.039998184530028236
+ },
+ {
+  "n": 6,
+  "graph": 2,
+  "job_id": "dbtv56ae8crs738arqdg",
+  "backend": "ibm_fez",
+  "F": 0.8878902515411863,
+  "lost_meas": 0.1523200668679282,
+  "lost_esp": 0.11210974845881372,
+  "lost_cal": 0.0398504639273235
+ },
+ {
+  "n": 8,
+  "graph": 0,
+  "job_id": "dbtv592e8crs738arqj0",
+  "backend": "ibm_fez",
+  "F": 0.8339105433838538,
+  "lost_meas": 0.1472011908892492,
+  "lost_esp": 0.16608945661614616,
+  "lost_cal": 0.06022723041166489
+ },
+ {
+  "n": 8,
+  "graph": 1,
+  "job_id": "dbtv5bk9po4c73ceb7qg",
+  "backend": "ibm_fez",
+  "F": 0.8164633224733834,
+  "lost_meas": 0.20917842994869096,
+  "lost_esp": 0.18353667752661662,
+  "lost_cal": 0.06699849447541373
+ },
+ {
+  "n": 8,
+  "graph": 2,
+  "job_id": "dbtv5eie8crs738arqs0",
+  "backend": "ibm_fez",
+  "F": 0.8366156396109201,
+  "lost_meas": 0.14545722755023038,
+  "lost_esp": 0.16338436038907989,
+  "lost_cal": 0.059185754316465
+ },
+ {
+  "n": 10,
+  "graph": 0,
+  "job_id": "dbtv5i1jbrss73a727tg",
+  "backend": "ibm_fez",
+  "F": 0.7235067767222036,
+  "lost_meas": 0.32320211576576907,
+  "lost_esp": 0.27649322327779635,
+  "lost_cal": 0.08805757939925574
+ },
+ {
+  "n": 10,
+  "graph": 1,
+  "job_id": "dbtv5kgvv3fc73c0j6kg",
+  "backend": "ibm_fez",
+  "F": 0.804116116206335,
+  "lost_meas": 0.1313792564070131,
+  "lost_esp": 0.19588388379366495,
+  "lost_cal": 0.060204094824635734
+ },
+ {
+  "n": 10,
+  "graph": 2,
+  "job_id": "dbtv5n49po4c73ceb890",
+  "backend": "ibm_fez",
+  "F": 0.7343797321592348,
+  "lost_meas": 0.2589420615149469,
+  "lost_esp": 0.2656202678407652,
+  "lost_cal": 0.08417507371803135
+ }
+]
